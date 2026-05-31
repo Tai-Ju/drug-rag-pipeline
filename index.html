@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地端用藥建議系統 · Drug RAG Pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f8f9f5;
+    --surface: #ffffff;
+    --surface2: #f2f4ef;
+    --border: #e2e5de;
+    --accent: #1d6b4a;
+    --accent-light: #e1f5ee;
+    --accent2: #185fa5;
+    --accent2-light: #e6f1fb;
+    --text: #1a1f17;
+    --muted: #6b7566;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Noto Sans TC', sans-serif;
+    --pill-r: 4px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    line-height: 1.75;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.9rem 2.5rem;
+    background: rgba(248,249,245,0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+
+  .nav-links { display: flex; gap: 2rem; list-style: none; }
+  .nav-links a {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.1em;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--accent); }
+
+  /* ─── HERO ─── */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 7rem 2.5rem 5rem;
+    max-width: 1000px; margin: 0 auto;
+  }
+
+  .hero-eyebrow {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 2rem;
+    opacity: 0; animation: up 0.6s 0.2s forwards;
+  }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+  .hero-eyebrow span {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.4rem, 6vw, 4.8rem);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.5rem;
+    opacity: 0; animation: up 0.6s 0.35s forwards;
+  }
+
+  .hero h1 .en {
+    display: block;
+    font-size: 0.55em;
+    font-weight: 300;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    margin-top: 0.4rem;
+  }
+
+  .hero-meta {
+    display: flex; gap: 1.5rem; flex-wrap: wrap;
+    margin-bottom: 2.5rem;
+    opacity: 0; animation: up 0.6s 0.5s forwards;
+  }
+
+  .meta-item {
+    display: flex; flex-direction: column;
+    border-left: 2px solid var(--accent);
+    padding-left: 12px;
+  }
+
+  .meta-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+  .meta-value { font-size: 15px; font-weight: 500; color: var(--text); }
+
+  .hero-tags {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    opacity: 0; animation: up 0.6s 0.65s forwards;
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--pill-r);
+    color: var(--muted);
+  }
+
+  .tag.green { border-color: #9fe1cb; color: var(--accent); background: var(--accent-light); }
+  .tag.blue  { border-color: #b5d4f4; color: var(--accent2); background: var(--accent2-light); }
+
+  /* ─── SECTION ─── */
+  section {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 5rem 2.5rem;
+  }
+
+  .sec-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .sec-title {
+    font-size: 1.8rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  hr { border: none; border-top: 1px solid var(--border); }
+
+  /* ─── PIPELINE SVG ─── */
+  .pipeline-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2rem;
+    overflow-x: auto;
+  }
+
+  .pipeline-wrap svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+
+  /* ─── DATA SOURCE GRID ─── */
+  .source-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+
+  .source-cell {
+    background: var(--surface);
+    padding: 1.25rem 1.5rem;
+  }
+
+  .source-name { font-weight: 500; font-size: 14px; margin-bottom: 4px; }
+  .source-count {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 2px;
+  }
+  .source-desc { font-size: 12px; color: var(--muted); }
+
+  /* ─── STACK ─── */
+  .stack-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .stack-cell {
+    background: var(--surface);
+    padding: 1.25rem 1.5rem;
+  }
+
+  .stack-layer {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .stack-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+  .stack-detail { font-size: 12px; color: var(--muted); }
+
+  /* ─── MODEL CARDS ─── */
+  .model-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 2rem;
+  }
+
+  .model-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    background: var(--surface);
+  }
+
+  .model-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: var(--pill-r);
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  .badge-llama { background: #e6f1fb; color: #185fa5; }
+  .badge-qwen  { background: #eaf3de; color: #3b6d11; }
+  .badge-gemma { background: #eeedfe; color: #534ab7; }
+
+  .model-name { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+  .model-by   { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .model-use  {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 8px;
+    background: var(--surface2);
+    border-radius: var(--pill-r);
+    color: var(--muted);
+    display: inline-block;
+  }
+
+  /* ─── FEATURE LIST ─── */
+  .feature-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 2rem;
+  }
+
+  .feature-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+  }
+
+  .feature-icon { font-size: 20px; margin-bottom: 8px; }
+  .feature-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .feature-desc  { font-size: 13px; color: var(--muted); }
+
+  /* ─── CODE ─── */
+  .code-block {
+    background: #f0f2ec;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 1.25rem 1.5rem;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #3a4035;
+    overflow-x: auto;
+    line-height: 1.8;
+    margin-bottom: 1.5rem;
+  }
+
+  .code-block .cmt { color: #8fa688; }
+  .code-block .kw  { color: var(--accent); font-weight: 500; }
+  .code-block .str { color: var(--accent2); }
+
+  /* ─── FOOTER ─── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem 2.5rem;
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  footer p { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  .gh-link {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    text-decoration: none;
+    border: 1px solid var(--accent);
+    padding: 7px 16px;
+    border-radius: var(--pill-r);
+    letter-spacing: 0.06em;
+    transition: background 0.2s, color 0.2s;
+  }
+  .gh-link:hover { background: var(--accent); color: white; }
+
+  /* ─── DISCLAIMER ─── */
+  .disclaimer {
+    background: #fff8e6;
+    border: 1px solid #f5c842;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    font-size: 13px;
+    color: #7a5c00;
+    margin-bottom: 2rem;
+  }
+
+  /* ─── ANIMATION ─── */
+  @keyframes up {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 640px) {
+    .model-grid { grid-template-columns: 1fr; }
+    nav { padding: 0.9rem 1.25rem; }
+    .hero, section { padding-left: 1.25rem; padding-right: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">DRUG_RAG /</span>
+  <ul class="nav-links">
+    <li><a href="#pipeline">架構</a></li>
+    <li><a href="#data">資料</a></li>
+    <li><a href="#models">模型</a></li>
+    <li><a href="#install">安裝</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">
+    <span class="dot"></span>
+    <span>Local LLM · RAG · 全程離線</span>
+  </div>
+  <h1>
+    地端用藥建議系統
+    <span class="en">Drug Recommendation System with Local LLM + RAG</span>
+  </h1>
+  <div class="hero-meta">
+    <div class="meta-item">
+      <span class="meta-label">RECORDS</span>
+      <span class="meta-value">68,674 筆</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">MODELS</span>
+      <span class="meta-value">3 個 LLM</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">DATA SOURCES</span>
+      <span class="meta-value">7 個資料庫</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">INFERENCE</span>
+      <span class="meta-value">100% 本機</span>
+    </div>
+  </div>
+  <div class="hero-tags">
+    <span class="tag green">Ollama</span>
+    <span class="tag green">ChromaDB</span>
+    <span class="tag green">Flask</span>
+    <span class="tag blue">FDA OpenData</span>
+    <span class="tag blue">PubMed API</span>
+    <span class="tag blue">RxNorm</span>
+    <span class="tag blue">WHO EML</span>
+    <span class="tag">Python 3.10+</span>
+  </div>
+</div>
+
+<hr>
+
+<!-- PIPELINE -->
+<section id="pipeline">
+  <p class="sec-label">01 / ARCHITECTURE</p>
+  <h2 class="sec-title">系統流程圖</h2>
+
+  <div class="pipeline-wrap">
+    <svg width="100%" viewBox="0 0 680 880" role="img" xmlns="http://www.w3.org/2000/svg">
+      <title>地端用藥建議系統完整流程圖</title>
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+
+      <!-- Title -->
+      <text x="340" y="24" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#1a1f17">地端用藥建議系統 — 巨量資料完整處理流程</text>
+
+      <!-- ── DATA ── -->
+      <rect x="30" y="38" width="620" height="5" rx="2" fill="#1d6b4a" opacity="0.15"/>
+      <text x="40" y="56" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#1a1f17">Data　資料收集</text>
+      <text x="40" y="70" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#6b7566">requests + fetch_*.py 透過 API 抓取 7 個開放資料庫，共 68,674 筆</text>
+
+      <rect x="40"  y="80" width="130" height="44" rx="6" fill="#e1f5ee" stroke="#1d6b4a" stroke-width="0.5"/>
+      <text x="105" y="99"  text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#0a5040">FDA Label</text>
+      <text x="105" y="114" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#1d6b4a">19,152 筆仿單</text>
+
+      <rect x="180" y="80" width="130" height="44" rx="6" fill="#e1f5ee" stroke="#1d6b4a" stroke-width="0.5"/>
+      <text x="245" y="99"  text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#0a5040">FDA Adverse</text>
+      <text x="245" y="114" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#1d6b4a">1,680 筆不良反應</text>
+
+      <rect x="320" y="80" width="130" height="44" rx="6" fill="#e1f5ee" stroke="#1d6b4a" stroke-width="0.5"/>
+      <text x="385" y="99"  text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#0a5040">FDA Safety</text>
+      <text x="385" y="114" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#1d6b4a">17,573 筆召回</text>
+
+      <rect x="460" y="80" width="190" height="44" rx="6" fill="#e1f5ee" stroke="#1d6b4a" stroke-width="0.5"/>
+      <text x="555" y="99"  text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#0a5040">PubMed + RxNorm + WHO</text>
+      <text x="555" y="114" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#1d6b4a">30,269 筆文獻與藥名</text>
+
+      <!-- arrow down -->
+      <line x1="340" y1="130" x2="340" y2="155" stroke="#ccc" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <!-- ── STORAGE ── -->
+      <rect x="30" y="158" width="620" height="5" rx="2" fill="#185fa5" opacity="0.15"/>
+      <text x="40" y="176" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#1a1f17">Storage　向量儲存</text>
+      <text x="40" y="190" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#6b7566">SentenceTransformer 嵌入 → ChromaDB 持久化儲存</text>
+
+      <rect x="100" y="200" width="200" height="44" rx="6" fill="#e6f1fb" stroke="#185fa5" stroke-width="0.5"/>
+      <text x="200" y="219" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#0c447c">SentenceTransformer</text>
+      <text x="200" y="234" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#185fa5">all-MiniLM-L6-v2 嵌入</text>
+
+      <rect x="380" y="200" width="200" height="44" rx="6" fill="#e6f1fb" stroke="#185fa5" stroke-width="0.5"/>
+      <text x="480" y="219" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#0c447c">ChromaDB</text>
+      <text x="480" y="234" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#185fa5">持久化向量資料庫</text>
+
+      <line x1="340" y1="250" x2="340" y2="275" stroke="#ccc" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <!-- ── PLATFORM ── -->
+      <rect x="30" y="278" width="620" height="5" rx="2" fill="#7a5c00" opacity="0.15"/>
+      <text x="40" y="296" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#1a1f17">Platform　服務平台</text>
+      <text x="40" y="310" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#6b7566">Flask API 接收查詢 → 向量檢索 → 組裝 Prompt</text>
+
+      <rect x="100" y="320" width="200" height="44" rx="6" fill="#fff8e6" stroke="#c8a200" stroke-width="0.5"/>
+      <text x="200" y="339" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#7a5c00">Flask app.py</text>
+      <text x="200" y="354" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#9a7800">POST /ask · port 8000</text>
+
+      <rect x="380" y="320" width="200" height="44" rx="6" fill="#fff8e6" stroke="#c8a200" stroke-width="0.5"/>
+      <text x="480" y="339" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#7a5c00">RAG 檢索</text>
+      <text x="480" y="354" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#9a7800">Top-8 相關藥品片段</text>
+
+      <line x1="340" y1="370" x2="340" y2="395" stroke="#ccc" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <!-- ── MODEL ── -->
+      <rect x="30" y="398" width="620" height="5" rx="2" fill="#534ab7" opacity="0.15"/>
+      <text x="40" y="416" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#1a1f17">Model　LLM 推論</text>
+      <text x="40" y="430" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#6b7566">Ollama 本地推論 · 三模型並行 · 無需雲端</text>
+
+      <rect x="40"  y="440" width="180" height="50" rx="6" fill="#e6f1fb" stroke="#185fa5" stroke-width="0.5"/>
+      <text x="130" y="461" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#0c447c">LLaMA 3</text>
+      <text x="130" y="477" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#185fa5">Meta · RAG + 無RAG 對照</text>
+
+      <rect x="250" y="440" width="180" height="50" rx="6" fill="#eaf3de" stroke="#3b6d11" stroke-width="0.5"/>
+      <text x="340" y="461" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#27500a">Qwen3:8b</text>
+      <text x="340" y="477" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#3b6d11">Alibaba · RAG 推論</text>
+
+      <rect x="460" y="440" width="190" height="50" rx="6" fill="#eeedfe" stroke="#534ab7" stroke-width="0.5"/>
+      <text x="555" y="461" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#3c3489">Gemma3:27b</text>
+      <text x="555" y="477" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#534ab7">Google · RAG 推論</text>
+
+      <line x1="340" y1="496" x2="340" y2="521" stroke="#ccc" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <!-- ── VISUALIZATION ── -->
+      <rect x="30" y="524" width="620" height="5" rx="2" fill="#185fa5" opacity="0.15"/>
+      <text x="40" y="542" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#1a1f17">Visualization　視覺化呈現</text>
+      <text x="40" y="556" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#6b7566">四欄並排比較（含 RAG vs 無RAG），附資料來源引用</text>
+
+      <rect x="40"  y="566" width="185" height="50" rx="6" fill="#e6f1fb" stroke="#185fa5" stroke-width="0.5"/>
+      <text x="132" y="585" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#0c447c">LLaMA 3 回答</text>
+      <text x="132" y="600" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#185fa5">Meta · 用藥建議輸出</text>
+
+      <rect x="237" y="566" width="206" height="50" rx="6" fill="#e6f1fb" stroke="#185fa5" stroke-width="0.5"/>
+      <text x="340" y="585" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#0c447c">Qwen3:8b 回答</text>
+      <text x="340" y="600" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#185fa5">Alibaba · 用藥建議輸出</text>
+
+      <rect x="455" y="566" width="195" height="50" rx="6" fill="#e6f1fb" stroke="#185fa5" stroke-width="0.5"/>
+      <text x="552" y="585" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#0c447c">Gemma3:27b 回答</text>
+      <text x="552" y="600" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#185fa5">Google · 用藥建議輸出</text>
+
+      <rect x="140" y="632" width="400" height="44" rx="8" fill="#f2f4ef" stroke="#9a9e95" stroke-width="0.5"/>
+      <text x="340" y="651" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="13" font-weight="500" fill="#444">資料來源標示</text>
+      <text x="340" y="666" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#6b7566">FDA · PubMed · WHO · RxNorm 引用</text>
+
+      <text x="340" y="710" text-anchor="middle" font-family="Noto Sans TC,sans-serif" font-size="11" fill="#6b7566" opacity="0.7">所有推論在本機執行 · 資料不上傳雲端 · 符合醫療隱私規範</text>
+    </svg>
+  </div>
+</section>
+
+<hr>
+
+<!-- DATA -->
+<section id="data">
+  <p class="sec-label">02 / DATA SOURCES</p>
+  <h2 class="sec-title">資料來源</h2>
+
+  <div class="source-grid">
+    <div class="source-cell">
+      <div class="source-count">19,152</div>
+      <div class="source-name">FDA Label</div>
+      <div class="source-desc">藥品仿單全文</div>
+    </div>
+    <div class="source-cell">
+      <div class="source-count">17,573</div>
+      <div class="source-name">FDA Safety</div>
+      <div class="source-desc">安全警示與召回記錄</div>
+    </div>
+    <div class="source-cell">
+      <div class="source-count">1,680</div>
+      <div class="source-name">FDA Adverse Events</div>
+      <div class="source-desc">不良事件通報資料</div>
+    </div>
+    <div class="source-cell">
+      <div class="source-count">~20,000</div>
+      <div class="source-name">PubMed</div>
+      <div class="source-desc">醫學文獻摘要（4 批次）</div>
+    </div>
+    <div class="source-cell">
+      <div class="source-count">~8,000</div>
+      <div class="source-name">RxNorm</div>
+      <div class="source-desc">藥品標準化名稱</div>
+    </div>
+    <div class="source-cell">
+      <div class="source-count">~500</div>
+      <div class="source-name">FDA Approved Drugs</div>
+      <div class="source-desc">核准藥品清單</div>
+    </div>
+    <div class="source-cell">
+      <div class="source-count">~400</div>
+      <div class="source-name">WHO Essential Medicines</div>
+      <div class="source-desc">世衛基本藥物清單</div>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- MODELS -->
+<section id="models">
+  <p class="sec-label">03 / MODELS</p>
+  <h2 class="sec-title">本地 LLM 模型</h2>
+
+  <div class="model-grid">
+    <div class="model-card">
+      <span class="model-badge badge-llama">LLaMA 3</span>
+      <div class="model-name">LLaMA 3</div>
+      <div class="model-by">Meta AI</div>
+      <span class="model-use">RAG 推論 + 無RAG 對照 + 查詢翻譯</span>
+    </div>
+    <div class="model-card">
+      <span class="model-badge badge-qwen">Qwen3:8b</span>
+      <div class="model-name">Qwen3:8b</div>
+      <div class="model-by">Alibaba Cloud</div>
+      <span class="model-use">RAG 推論</span>
+    </div>
+    <div class="model-card">
+      <span class="model-badge badge-gemma">Gemma3:27b</span>
+      <div class="model-name">Gemma3:27b</div>
+      <div class="model-by">Google DeepMind</div>
+      <span class="model-use">RAG 推論</span>
+    </div>
+  </div>
+
+  <div class="feature-list">
+    <div class="feature-item">
+      <div class="feature-icon">🔍</div>
+      <div class="feature-title">RAG vs 無 RAG 對照</div>
+      <div class="feature-desc">LLaMA 3 同時跑有/無資料庫兩種模式，清楚看出 RAG 對答案品質的提升</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">📚</div>
+      <div class="feature-title">來源標籤引用</div>
+      <div class="feature-desc">每個回答附上 FDA / PubMed / WHO / RxNorm 來源 badge</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🔒</div>
+      <div class="feature-title">100% 本機推論</div>
+      <div class="feature-desc">透過 Ollama 在本地執行，問診資料不上傳任何雲端</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🌐</div>
+      <div class="feature-title">中英文混合輸入</div>
+      <div class="feature-desc">自動將中文問題翻譯為英文關鍵字進行向量檢索，再以繁體中文回答</div>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- INSTALL -->
+<section id="install">
+  <p class="sec-label">04 / INSTALLATION</p>
+  <h2 class="sec-title">安裝與執行</h2>
+
+  <div class="disclaimer">
+    ⚠️ 需要足夠 RAM：LLaMA3 約需 8GB，Gemma3:27b 約需 20GB。建議在 Mac M 系列或有 GPU 的機器上執行。
+  </div>
+
+  <div class="code-block">
+<span class="cmt"># 1. 安裝依賴</span>
+<span class="kw">pip</span> install flask chromadb sentence-transformers ollama
+
+<span class="cmt"># 2. 安裝 Ollama 並拉取模型</span>
+<span class="kw">curl</span> -fsSL https://ollama.com/install.sh | sh
+<span class="kw">ollama</span> pull llama3
+<span class="kw">ollama</span> pull qwen3:8b
+<span class="kw">ollama</span> pull gemma3:27b
+
+<span class="cmt"># 3. 抓取資料並建立向量資料庫</span>
+<span class="kw">python</span> fetch_all_fda.py
+<span class="kw">python</span> fetch_pubmed.py
+<span class="kw">python</span> fetch_rxnorm.py
+<span class="kw">python</span> build_db_final.py
+
+<span class="cmt"># 4. 啟動</span>
+<span class="kw">python</span> app.py
+<span class="cmt"># → http://localhost:8000</span>
+  </div>
+
+  <div class="stack-row">
+    <div class="stack-cell">
+      <div class="stack-layer">LLM</div>
+      <div class="stack-name">Ollama</div>
+      <div class="stack-detail">本地模型管理與推論</div>
+    </div>
+    <div class="stack-cell">
+      <div class="stack-layer">VECTOR DB</div>
+      <div class="stack-name">ChromaDB</div>
+      <div class="stack-detail">持久化向量儲存</div>
+    </div>
+    <div class="stack-cell">
+      <div class="stack-layer">EMBEDDING</div>
+      <div class="stack-name">all-MiniLM-L6-v2</div>
+      <div class="stack-detail">SentenceTransformer</div>
+    </div>
+    <div class="stack-cell">
+      <div class="stack-layer">BACKEND</div>
+      <div class="stack-name">Flask</div>
+      <div class="stack-detail">API + 前端 UI</div>
+    </div>
+    <div class="stack-cell">
+      <div class="stack-layer">DATA</div>
+      <div class="stack-name">7 Open APIs</div>
+      <div class="stack-detail">FDA · PubMed · RxNorm · WHO</div>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<footer>
+  <p>學號 142216015 · Drug RAG Pipeline · 2025 · ⚠️ 僅供學術研究，非醫療診斷依據</p>
+  <a class="gh-link" href="https://github.com/Tai-Ju/drug-rag-pipeline">VIEW ON GITHUB →</a>
+</footer>
+
+</body>
+</html>

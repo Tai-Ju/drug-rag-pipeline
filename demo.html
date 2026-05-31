@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地端用藥建議系統 · Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface2: #f7fafc;
+    --border: #e2e8f0;
+    --accent: #4299e1;
+    --text: #1a202c;
+    --muted: #718096;
+    --sans: 'Noto Sans TC', -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  /* ─── HEADER ─── */
+  .header { text-align: center; margin-bottom: 28px; }
+  .header h1 { font-size: 22px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  .demo-banner {
+    display: inline-block;
+    background: #fff8e1;
+    border: 1px solid #f6c90e;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    color: #7a5c00;
+    font-family: var(--mono);
+  }
+
+  /* ─── INPUT AREA ─── */
+  .input-area {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 20px 24px;
+    max-width: 860px;
+    margin: 0 auto 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  }
+  textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: var(--sans);
+    resize: none;
+    height: 80px;
+    outline: none;
+    color: var(--text);
+    background: var(--surface);
+    transition: border 0.2s;
+    line-height: 1.6;
+  }
+  textarea:focus { border-color: var(--accent); }
+
+  .quick-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .quick-btn {
+    padding: 6px 14px;
+    background: #ebf8ff;
+    border: 1px solid #bee3f8;
+    border-radius: 20px;
+    font-size: 12px;
+    color: #2b6cb0;
+    cursor: pointer;
+    transition: all 0.18s;
+    font-family: var(--sans);
+  }
+  .quick-btn:hover { background: #bee3f8; }
+  .quick-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  button.ask-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 4px;
+  }
+  button.ask-btn:hover { background: #3182ce; }
+
+  /* ─── STATUS BAR ─── */
+  .status-bar {
+    max-width: 860px;
+    margin: 0 auto 16px;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+  .status-bar.show { display: flex; }
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid #bee3f8;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── RESULTS ─── */
+  .results {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  @media (max-width: 768px) { .results { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    display: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .card.show { display: block; }
+  .card.visible { opacity: 1; transform: translateY(0); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .model-badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: var(--mono);
+    color: white;
+  }
+  .badge-llama   { background: #4299e1; }
+  .badge-qwen    { background: #48bb78; }
+  .badge-gemma   { background: #9f7aea; }
+
+  .rag-tag, .no-rag-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-family: var(--mono);
+  }
+  .rag-tag    { background: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; }
+  .no-rag-tag { background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; }
+
+  .answer {
+    font-size: 13.5px;
+    line-height: 1.85;
+    color: #2d3748;
+    white-space: pre-wrap;
+    margin-bottom: 14px;
+    min-height: 80px;
+  }
+
+  /* typing cursor */
+  .answer.typing::after {
+    content: '▋';
+    animation: blink 0.7s step-end infinite;
+    color: var(--accent);
+    font-size: 12px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .sources {
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+  }
+  .sources h4 { font-size: 11px; color: var(--muted); margin-bottom: 8px; font-weight: 400; }
+  .source-item {
+    display: flex;
+    align-items: center;
+    padding: 3px 0;
+    font-size: 12px;
+    color: #4a5568;
+    border-bottom: 1px solid var(--border);
+  }
+  .source-item:last-child { border-bottom: none; }
+  .src-badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    margin-right: 8px;
+    color: white;
+    font-family: var(--mono);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .badge-fda      { background: #4299e1; }
+  .badge-rxnorm   { background: #48bb78; }
+  .badge-adverse  { background: #ed8936; }
+  .badge-pubmed   { background: #9f7aea; }
+  .badge-safety   { background: #f56565; }
+  .badge-approved { background: #38b2ac; }
+  .badge-who      { background: #667eea; }
+
+  .disclaimer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 28px;
+  }
+
+  /* empty state */
+  .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>💊 地端用藥建議系統</h1>
+  <p class="subtitle">LLaMA 3 · Qwen3:8b · Gemma3:27b · RAG 檢索增強生成 · 68,674 筆藥品資料</p>
+  <span class="demo-banner">⚡ STATIC DEMO — 預設範例回答，實際系統在本機執行</span>
+</div>
+
+<div class="input-area">
+  <textarea id="question" readonly placeholder="請選擇下方範例問題..."></textarea>
+  <div class="quick-btns">
+    <span class="quick-btn" data-key="ckd">🫘 CKD 用藥安全</span>
+    <span class="quick-btn" data-key="htn">❤️ 高血壓用藥</span>
+    <span class="quick-btn" data-key="inter">⚠️ 藥物交互作用</span>
+    <span class="quick-btn" data-key="pain">🩹 CKD 止痛替代</span>
+  </div>
+  <button class="ask-btn" id="askBtn" onclick="runDemo()">查詢用藥建議（四模型並排比較）</button>
+</div>
+
+<div class="status-bar" id="statusBar">
+  <div class="spinner"></div>
+  <span id="statusText">⏳ 四個模型同時查詢中，請稍候...</span>
+</div>
+
+<div class="results" id="results">
+  <div class="empty-state">
+    <div class="icon">💬</div>
+    選擇上方範例問題，即可查看四模型並排比較結果
+  </div>
+</div>
+
+<p class="disclaimer">⚠️ 本系統僅供參考，請諮詢醫師或藥師後再用藥</p>
+
+<script>
+const DEMOS = {
+  ckd: {
+    q: "Ibuprofen 400mg TID for a patient with CKD eGFR 42, is this safe?",
+    answers: [
+      {
+        model: "LLaMA 3", badgeClass: "badge-llama", rag: true,
+        text: `根據 FDA 藥品仿單與 PubMed 文獻資料：
+
+❌ 不建議使用
+
+Ibuprofen 屬於 NSAIDs（非類固醇消炎藥），對 CKD 患者具有明確腎毒性風險：
+
+• eGFR 42 屬於 CKD stage 3b，NSAIDs 可能進一步降低腎小球過濾率
+• 機制：抑制前列腺素合成 → 腎臟入球小動脈收縮 → GFR 降低
+• FDA 黑框警告：NSAIDs 在腎功能不全患者中可能引起急性腎損傷
+
+建議替代方案：
+1. Acetaminophen（普拿疼）500-1000mg，每 6-8 小時一次，較腎臟安全
+2. 局部止痛藥（Diclofenac gel）降低全身吸收
+3. 若需更強效止痛，諮詢醫師評估 Tramadol（需調整劑量）
+
+⚠️ 本系統僅供參考，請諮詢醫師或藥師。`,
+        sources: [
+          { label: "FDA Label", badge: "badge-fda" },
+          { label: "PubMed", badge: "badge-pubmed" },
+          { label: "FDA Safety", badge: "badge-safety" },
+          { label: "RxNorm", badge: "badge-rxnorm" },
+        ]
+      },
+      {
+        model: "LLaMA 3", badgeClass: "badge-llama", rag: false,
+        text: `Ibuprofen 在 CKD 患者中使用需格外謹慎。
+
+NSAIDs 類藥物（包括 Ibuprofen）會抑制腎臟前列腺素的合成，導致腎血流量減少，可能加速 CKD 惡化。
+
+對於 eGFR 42 的患者（CKD stage 3b），一般建議：
+• 避免使用 NSAIDs
+• 首選 Acetaminophen 作為止痛替代
+• 定期監測腎功能
+
+⚠️ 本系統僅供參考，請諮詢醫師或藥師。`,
+        sources: null
+      },
+      {
+        model: "Qwen3:8b", badgeClass: "badge-qwen", rag: true,
+        text: `依據 FDA 標示與腎臟藥理學文獻：
+
+⛔ 此劑量對 eGFR 42 患者風險偏高
+
+Ibuprofen 400mg TID（每日 1200mg）的風險評估：
+• CKD stage 3b 患者腎臟自我調節能力已受損
+• NSAIDs 可能誘發「功能性急性腎衰竭」
+• 長期使用加速腎功能惡化速度（文獻報告每年額外下降 2-5 ml/min/1.73m²）
+
+WHO 基本藥物指引替代建議：
+1. Paracetamol（Acetaminophen）— 首選
+2. 外用 NSAIDs（局部吸收少，全身副作用低）
+3. 非藥物療法：物理治療、熱敷
+
+⚠️ 本系統僅供參考，請諮詢醫師或藥師。`,
+        sources: [
+          { label: "FDA Label", badge: "badge-fda" },
+          { label: "PubMed", badge: "badge-pubmed" },
+          { label: "WHO Essential Medicines", badge: "badge-who" },
+          { label: "FDA Adverse Events", badge: "badge-adverse" },
+        ]
+      },
+      {
+        model: "Gemma3:27b", badgeClass: "badge-gemma", rag: true,
+        text: `綜合 FDA 不良事件資料庫與藥理文獻分析：
+
+🔴 不建議使用 — 需調整治療方案
+
+藥理機制說明：
+Ibuprofen 抑制 COX-1/COX-2，減少腎臟前列腺素 E2 與 I2 合成。在健康腎臟中影響有限，但在 CKD 患者中，腎臟血流已高度依賴前列腺素維持，任何 NSAIDs 均可能引發血流動力學性急性腎損傷。
+
+eGFR 42 風險分級：中高風險（KDIGO 建議避免）
+
+具體建議：
+• 短期輕中度疼痛 → Acetaminophen 500mg q6h（每日不超過 2g）
+• 發炎性疼痛 → 諮詢腎臟科後考慮短療程 Prednisolone
+• 慢性疼痛管理 → 轉介疼痛科評估多模態療法
+
+⚠️ 本系統僅供參考，請諮詢醫師或藥師。`,
+        sources: [
+          { label: "FDA Label", badge: "badge-fda" },
+          { label: "PubMed", badge: "badge-pubmed" },
+          { label: "FDA Safety", badge: "badge-safety" },
+          { label: "FDA Approved Drugs", badge: "badge-approved" },
+        ]
+      }
+    ]
+  },
+
+  htn: {
+    q: "我有高血壓，適合吃什麼藥？有什麼副作用？",
+    answers: [
+      {
+        model: "LLaMA 3", badgeClass: "badge-llama", rag: true,
+        text: `根據 FDA 藥品仿單與高血壓治療指引：
+
+常用高血壓藥物分類：
+
+1. ACE 抑制劑（如 Lisinopril、Enalapril）
+   • 副作用：乾咳（約 10-15%）、高血鉀、血管水腫
+   • 適合：合併糖尿病或蛋白尿患者
+
+2. ARB（如 Losartan、Valsartan）
+   • 副作用：頭暈、高血鉀（較 ACE 抑制劑少咳嗽）
+   • 適合：對 ACE 抑制劑咳嗽不耐受者
+
+3. 鈣離子拮抗劑（如 Amlodipine）
+   • 副作用：腳踝水腫、臉部潮紅、心悸
+   • 適合：老年人、合併心絞痛患者
+
+4. 利尿劑（如 Hydrochlorothiazide）
+   • 副作用：低血鉀、頻尿、高血糖風險
+   • 通常作為輔助用藥
+
+⚠️ 本系統僅供參考，請諮詢醫師或藥師。`,
+        sources: [
+          { label: "FDA Label", badge: "badge-fda" },
+          { label: "FDA Approved Drugs", badge: "badge-approved" },
+          { label: "PubMed", badge: "badge-pubmed" },
+          { label: "RxNorm", badge: "badge-rxnorm" },
+        ]
+      },
+      {
+        model: "LLaMA 3", badgeClass: "badge-llama", rag: false,
+        text: `高血壓（高血壓症）是一種慢性疾病，需要長期管理。
+
+常見的高血壓用藥包括：
+• ACE 抑制劑：如 Lisinopril
+• ARB：如 Losartan  
+• 鈣離子拮抗劑：如 Amlodipine
+• 利尿劑：如 Hydrochlorothiazide
+• Beta 阻斷劑：如 Metoprolol
+
+每種藥物都有不同的副作用和適應症，需要由醫師根據個人狀況選擇最適合的藥物。
+
+⚠️ 本系統僅供參考，請諮詢醫師或藥師。`,
+        sources: null
+      },
+      {
+        model: "Qwen3:8b", badgeClass: "badge-qwen", rag: true,
+        text: `依據 FDA 核准藥品資料庫與 WHO 基本藥物清單：
+
+高血壓第一線用藥（2024 指引）：
+
+🔵 Amlodipine 5-10mg QD
+副作用：踝部水腫（最常見）、頭痛、臉潮紅
+優點：每日一次、耐受性佳、有心血管保護證據
+
+🔵 Losartan 50-100mg QD
+副作用：頭暈、偶發高血鉀
+優點：無乾咳、對腎臟有保護效果（適合糖尿病患）
+
+🔵 Indapamide 1.5mg QD（利尿劑）
+副作用：低血鈉、低血鉀
+優點：代謝影響少於其他噻嗪類
+
+非藥物輔助：減鹽（< 5g/天）、規律有氧運動、戒菸
+
+⚠️ 本系統僅供參考，請諮詢醫師或藥師。`,
+        sources: [
+          { label: "FDA Approved Drugs", badge: "badge-approved" },
+          { label: "WHO Essential Medicines", badge: "badge-who" },
+          { label: "RxNorm", badge: "badge-rxnorm" },
+          { label: "PubMed", badge: "badge-pubmed" },
+        ]
+      },
+      {
+        model: "Gemma3:27b", badgeClass: "badge-gemma", rag: true,
+        text: `綜合 FDA 標示資料與大型臨床試驗文獻：
+
+個人化選藥考量因素：
+
+年齡 < 60 歲且無合併症：
+→ ACE 抑制劑或 ARB 為首選
+
+年齡 ≥ 60 歲：
+→ 鈣離子拮抗劑（Amlodipine）+ 利尿劑組合
+
+合併糖尿病或 CKD：
+→ ACE 抑制劑或 ARB（腎臟保護效果）
+
+合併心臟衰竭：
+→ ACE 抑制劑 + Beta 阻斷劑 + 利尿劑三合一
+
+重要副作用監測：
+• 所有藥物：定期監測血壓、電解質、腎功能
+• ACE 抑制劑：注意乾咳與血管水腫
+• 利尿劑：補充鉀離子，避免低血鉀
+
+⚠️ 本系統僅供參考，請諮詢醫師或藥師。`,
+        sources: [
+          { label: "FDA Label", badge: "badge-fda" },
+          { label: "FDA Approved Drugs", badge: "badge-approved" },
+          { label: "PubMed", badge: "badge-pubmed" },
+          { label: "WHO Essential Medicines", badge: "badge-who" },
+        ]
+      }
+    ]
+  },
+
+  inter: {
+    q: "Can Metformin and Ibuprofen be used together in diabetic patients?",
+    answers: [
+      {
+        model: "LLaMA 3", badgeClass: "badge-llama", rag: true,
+        text: `Based on FDA drug label data and drug interaction databases:
+
+⚠️ Use with caution — potential interaction exists
+
+Metformin + Ibuprofen Interaction:
+
+1. Renal clearance competition
+   • Both drugs are renally cleared; concurrent use may reduce Metformin elimination
+   • Risk: Metformin accumulation → Lactic acidosis (rare but serious)
+
+2. NSAIDs and renal function
+   • Ibuprofen reduces renal prostaglandins → decreased GFR
+   • Reduced GFR further impairs Metformin clearance
+
+Clinical recommendation:
+• Short-term (1-3 days): Monitor renal function; generally acceptable in patients with normal baseline eGFR (>60)
+• Long-term: Avoid combination; use Acetaminophen instead
+• Monitor for signs of lactic acidosis: nausea, weakness, abdominal pain
+
+⚠️ For informational purposes only. Please consult your physician or pharmacist.`,
+        sources: [
+          { label: "FDA Label", badge: "badge-fda" },
+          { label: "FDA Adverse Events", badge: "badge-adverse" },
+          { label: "PubMed", badge: "badge-pubmed" },
+          { label: "RxNorm", badge: "badge-rxnorm" },
+        ]
+      },
+      {
+        model: "LLaMA 3", badgeClass: "badge-llama", rag: false,
+        text: `Metformin and Ibuprofen can generally be used together, but with caution.
+
+The main concern is that NSAIDs like Ibuprofen can affect kidney function, which may impair the clearance of Metformin, potentially increasing the risk of lactic acidosis.
+
+Key points:
+• Short-term use is generally acceptable in patients with normal kidney function
+• Avoid in patients with CKD or heart failure
+• Acetaminophen is a safer alternative for pain relief in diabetic patients
+
+⚠️ For informational purposes only. Please consult your physician or pharmacist.`,
+        sources: null
+      },
+      {
+        model: "Qwen3:8b", badgeClass: "badge-qwen", rag: true,
+        text: `Based on FDA adverse event reports and pharmacokinetic literature:
+
+Drug Interaction Classification: Moderate (monitor closely)
+
+Mechanism:
+• Ibuprofen → renal vasoconstriction → ↓ GFR → ↓ Metformin clearance
+• Risk of Metformin accumulation correlates with baseline renal function
+
+Risk stratification:
+• eGFR > 60: Low risk for short-term use (<3 days)
+• eGFR 45-60: Use with caution; monitor creatinine
+• eGFR < 45: Avoid combination
+
+Safer alternatives for pain in diabetic patients:
+1. Acetaminophen 500-1000mg (preferred)
+2. Topical diclofenac gel (minimal systemic absorption)
+3. Physiotherapy for musculoskeletal pain
+
+⚠️ For informational purposes only. Please consult your physician or pharmacist.`,
+        sources: [
+          { label: "FDA Label", badge: "badge-fda" },
+          { label: "FDA Adverse Events", badge: "badge-adverse" },
+          { label: "PubMed", badge: "badge-pubmed" },
+          { label: "WHO Essential Medicines", badge: "badge-who" },
+        ]
+      },
+      {
+        model: "Gemma3:27b", badgeClass: "badge-gemma", rag: true,
+        text: `Comprehensive analysis from FDA labeling and clinical pharmacology:
+
+Risk Assessment: Moderate — Context-dependent
+
+Pharmacokinetic Interaction:
+Ibuprofen competitively inhibits renal OAT3 transporters, which are responsible for ~50% of Metformin tubular secretion. This may increase Metformin AUC by 15-25%.
+
+Clinical Significance:
+• Isolated short-term NSAID use in euglycemic patients with eGFR >60: acceptable
+• Patients with volume depletion, CHF, or reduced baseline GFR: AVOID
+
+FDA label for Metformin explicitly states: "Use with caution with drugs that may affect renal function"
+
+Recommended approach:
+1. First-line: Acetaminophen for analgesia
+2. If NSAIDs needed: Use shortest effective duration
+3. Hold Metformin if significant NSAID exposure anticipated with any renal compromise
+
+⚠️ For informational purposes only. Please consult your physician or pharmacist.`,
+        sources: [
+          { label: "FDA Label", badge: "badge-fda" },
+          { label: "FDA Safety", badge: "badge-safety" },
+          { label: "PubMed", badge: "badge-pubmed" },
+          { label: "FDA Approved Drugs", badge: "badge-approved" },
+        ]
+      }
+    ]
+  },
+
+  pain: {
+    q: "What are alternatives to NSAIDs for pain in CKD patients?",
+    answers: [
+      {
+        model: "LLaMA 3", badgeClass: "badge-llama", rag: true,
+        text: `Based on FDA drug labels and WHO Essential Medicines guidelines:
+
+NSAID Alternatives for CKD Patients:
+
+🟢 Preferred options:
+1. Acetaminophen (Paracetamol) — FIRST LINE
+   • Dose: 500-1000mg q6-8h (max 2g/day in severe CKD)
+   • Mechanism: Central COX inhibition, no renal hemodynamic effects
+   • Note: Avoid in liver disease
+
+2. Topical NSAIDs (Diclofenac 1% gel)
+   • Minimal systemic absorption (<6%)
+   • Safe for localized musculoskeletal pain
+   • Apply to affected area TID-QID
+
+🟡 Use with caution:
+3. Tramadol
+   • Adjust dose for eGFR: 50% reduction if eGFR <30
+   • Risk of accumulation of active metabolite
+   • Avoid extended-release formulations in severe CKD
+
+4. Low-dose Gabapentin (neuropathic pain)
+   • Dose adjustment required: eGFR 30-60: max 600mg/day
+
+⚠️ For informational purposes only. Please consult your physician or pharmacist.`,
+        sources: [
+          { label: "FDA Label", badge: "badge-fda" },
+          { label: "WHO Essential Medicines", badge: "badge-who" },
+          { label: "PubMed", badge: "badge-pubmed" },
+          { label: "FDA Approved Drugs", badge: "badge-approved" },
+        ]
+      },
+      {
+        model: "LLaMA 3", badgeClass: "badge-llama", rag: false,
+        text: `For CKD patients who cannot use NSAIDs, several alternatives exist:
+
+1. Acetaminophen (Paracetamol) - Generally safe and first-line choice
+2. Topical analgesics - Reduced systemic absorption
+3. Tramadol - With appropriate dose adjustment for renal function
+4. Gabapentin/Pregabalin - For neuropathic pain, with dose adjustment
+5. Physical therapy and non-pharmacological approaches
+
+The choice depends on the type of pain, severity of CKD, and other comorbidities.
+
+⚠️ For informational purposes only. Please consult your physician or pharmacist.`,
+        sources: null
+      },
+      {
+        model: "Qwen3:8b", badgeClass: "badge-qwen", rag: true,
+        text: `Based on WHO EML, FDA approved drug database, and KDIGO pain guidelines:
+
+Stepwise Analgesic Approach in CKD:
+
+Step 1 — Mild pain (eGFR any):
+• Acetaminophen 500mg q8h (preferred, max 2g/day if eGFR<30)
+• Topical diclofenac gel or lidocaine patch
+
+Step 2 — Moderate pain (eGFR >30):
+• Low-dose Tramadol 25-50mg (immediate release, q8-12h)
+• Avoid accumulation: watch for CNS side effects
+
+Step 3 — Neuropathic pain:
+• Gabapentin (dose-adjusted): eGFR 30-59 → max 600mg TID
+• Duloxetine 30-60mg (hepatically metabolized, CKD-safe)
+
+Non-pharmacological:
+• Physical therapy (evidence level A for musculoskeletal)
+• TENS (transcutaneous electrical nerve stimulation)
+• Cognitive behavioral therapy for chronic pain
+
+⚠️ For informational purposes only. Please consult your physician or pharmacist.`,
+        sources: [
+          { label: "WHO Essential Medicines", badge: "badge-who" },
+          { label: "FDA Approved Drugs", badge: "badge-approved" },
+          { label: "PubMed", badge: "badge-pubmed" },
+          { label: "RxNorm", badge: "badge-rxnorm" },
+        ]
+      },
+      {
+        model: "Gemma3:27b", badgeClass: "badge-gemma", rag: true,
+        text: `Comprehensive evidence-based analgesic strategy for CKD:
+
+Pharmacological Options by CKD Stage:
+
+eGFR 30-60 (Stage 3):
+• Acetaminophen: standard dosing (max 3g/day)
+• Tramadol IR: 50mg q12h (avoid CR formulations)
+• Topical agents: diclofenac gel, capsaicin cream
+
+eGFR 15-30 (Stage 4):
+• Acetaminophen: max 2g/day
+• Tramadol: 25mg q12h with careful monitoring
+• Buprenorphine patch: hepatic metabolism, safer than other opioids
+
+eGFR <15 / Dialysis (Stage 5):
+• Acetaminophen remains first-line
+• Hydromorphone (preferred over morphine, less active metabolite accumulation)
+• Fentanyl patch (no active renal metabolites)
+
+Key principle: In CKD, many opioid metabolites accumulate and cause CNS toxicity. Buprenorphine and fentanyl have the most favorable renal profiles among opioids.
+
+⚠️ For informational purposes only. Please consult your physician or pharmacist.`,
+        sources: [
+          { label: "FDA Label", badge: "badge-fda" },
+          { label: "FDA Approved Drugs", badge: "badge-approved" },
+          { label: "PubMed", badge: "badge-pubmed" },
+          { label: "WHO Essential Medicines", badge: "badge-who" },
+        ]
+      }
+    ]
+  }
+};
+
+let currentKey = null;
+
+function selectQ(key) {
+  document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-key="${key}"]`).classList.add('active');
+  currentKey = key;
+  document.getElementById('question').value = DEMOS[key].q;
+}
+
+function runDemo() {
+  if (!currentKey) {
+    alert('請先選擇一個範例問題');
+    return;
+  }
+
+  const demo = DEMOS[currentKey];
+  const resultsEl = document.getElementById('results');
+  const statusBar = document.getElementById('statusBar');
+
+  // clear
+  resultsEl.innerHTML = '';
+  statusBar.classList.add('show');
+  document.getElementById('askBtn').disabled = true;
+
+  const steps = ['⏳ 翻譯查詢關鍵字...', '🔍 向量檢索相關藥品資料...', '🤖 四個模型同時推論中...'];
+  let step = 0;
+  const statusText = document.getElementById('statusText');
+  statusText.textContent = steps[0];
+
+  const stepInterval = setInterval(() => {
+    step++;
+    if (step < steps.length) statusText.textContent = steps[step];
+  }, 800);
+
+  // create cards immediately (hidden)
+  demo.answers.forEach((ans, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.id = `card${i}`;
+
+    const ragTag = ans.rag
+      ? `<span class="rag-tag">✓ 有 RAG</span>`
+      : `<span class="no-rag-tag">✗ 無 RAG</span>`;
+
+    const sourcesHtml = ans.sources
+      ? `<div class="sources">
+          <h4>📚 參考來源</h4>
+          ${ans.sources.map(s => `<div class="source-item"><span class="src-badge ${s.badge}">${s.label}</span></div>`).join('')}
+        </div>`
+      : '';
+
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="model-badge ${ans.badgeClass}">${ans.model}</span>
+        ${ragTag}
+      </div>
+      <div class="answer typing" id="ans${i}"></div>
+      ${sourcesHtml}
+    `;
+    resultsEl.appendChild(card);
+  });
+
+  // show cards with delay and type text
+  setTimeout(() => {
+    clearInterval(stepInterval);
+    statusBar.classList.remove('show');
+    document.getElementById('askBtn').disabled = false;
+
+    demo.answers.forEach((ans, i) => {
+      const delay = i * 200;
+      setTimeout(() => {
+        const card = document.getElementById(`card${i}`);
+        card.classList.add('show');
+        setTimeout(() => card.classList.add('visible'), 20);
+        typeText(`ans${i}`, ans.text, 8);
+      }, delay);
+    });
+  }, 2400);
+}
+
+function typeText(elId, text, speed) {
+  const el = document.getElementById(elId);
+  el.textContent = '';
+  let i = 0;
+  const interval = setInterval(() => {
+    el.textContent += text[i];
+    i++;
+    if (i >= text.length) {
+      clearInterval(interval);
+      el.classList.remove('typing');
+    }
+  }, speed);
+}
+
+// attach quick btn handlers
+document.querySelectorAll('.quick-btn').forEach(btn => {
+  btn.addEventListener('click', () => selectQ(btn.dataset.key));
+});
+
+// auto-select first
+selectQ('ckd');
+</script>
+</body>
+</html>

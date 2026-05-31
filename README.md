@@ -2,6 +2,10 @@
 
 基於本地大型語言模型（LLM）與檢索增強生成（RAG）的用藥建議系統，全程離線運行，無需雲端 API。
 
+ 
+🌐 **Portfolio 網站：[https://tai-ju.github.io/drug-rag-pipeline/](https://tai-ju.github.io/drug-rag-pipeline/)**
+⚡ **互動 Demo：[https://tai-ju.github.io/drug-rag-pipeline/demo.html](https://tai-ju.github.io/drug-rag-pipeline/demo.html)**
+
 ---
 
 ## 系統架構

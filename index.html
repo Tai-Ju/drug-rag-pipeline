@@ -337,6 +337,28 @@
   }
   .gh-link:hover { background: var(--accent); color: white; }
 
+  .demo-link {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: white;
+    text-decoration: none;
+    background: var(--accent);
+    padding: 7px 16px;
+    border-radius: var(--pill-r);
+    letter-spacing: 0.06em;
+    transition: background 0.2s;
+  }
+  .demo-link:hover { background: #0f6e56; }
+
+  .hero-btns {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+    opacity: 0;
+    animation: up 0.6s 0.8s forwards;
+  }
+
   /* ─── DISCLAIMER ─── */
   .disclaimer {
     background: #fff8e6;
@@ -410,6 +432,10 @@
     <span class="tag blue">RxNorm</span>
     <span class="tag blue">WHO EML</span>
     <span class="tag">Python 3.10+</span>
+  </div>
+  <div class="hero-btns">
+    <a class="demo-link" href="demo.html">▷ 查看互動 Demo</a>
+    <a class="gh-link" href="https://github.com/Tai-Ju/drug-rag-pipeline">VIEW ON GITHUB →</a>
   </div>
 </div>
 
